@@ -1915,13 +1915,13 @@ namespace vsf
 
     filename << "(step" << step << ")";
 
-    // Output final mesh
-    std::ostringstream eps_filename;
-    eps_filename << filename.str() << ".eps";
-    std::ofstream output_mesh (eps_filename.str().c_str());
-
-    GridOut grid_out;
-    grid_out.write_eps (triangulation, output_mesh);
+//    // Output final mesh
+//    std::ostringstream eps_filename;
+//    eps_filename << filename.str() << ".eps";
+//    std::ofstream output_mesh (eps_filename.str().c_str());
+//
+//    GridOut grid_out;
+//    grid_out.write_eps (triangulation, output_mesh);
 
     // Output numerical solution
     std::ostringstream vtk_filename;
@@ -1936,19 +1936,19 @@ namespace vsf
     data_out.build_patches (fe->degree);
     data_out.write_vtk (output_num_sol);
 
-    // Output point history
-    std::ostringstream vtk_filename_history;
-    vtk_filename_history << filename.str() << "_history.vtk";
-    std::ofstream output_history (vtk_filename_history.str().c_str());
-
-    DataOut<dim> data_out_history;
-    data_out_history.attach_dof_handler (history_dof_handler);
-    data_out_history.add_data_vector (history_field[0][2], "history_field_xz");
-    data_out_history.add_data_vector (history_field[1][2], "history_field_yz");
-    data_out_history.add_data_vector (history_field[2][2], "history_field_zz");
-
-    data_out_history.build_patches (history_fe->degree);
-    data_out_history.write_vtk (output_history);
+//    // Output point history
+//    std::ostringstream vtk_filename_history;
+//    vtk_filename_history << filename.str() << "_history.vtk";
+//    std::ofstream output_history (vtk_filename_history.str().c_str());
+//
+//    DataOut<dim> data_out_history;
+//    data_out_history.attach_dof_handler (history_dof_handler);
+//    data_out_history.add_data_vector (history_field[0][2], "history_field_xz");
+//    data_out_history.add_data_vector (history_field[1][2], "history_field_yz");
+//    data_out_history.add_data_vector (history_field[2][2], "history_field_zz");
+//
+//    data_out_history.build_patches (history_fe->degree);
+//    data_out_history.write_vtk (output_history);
 
 
 //    // Output comparison
