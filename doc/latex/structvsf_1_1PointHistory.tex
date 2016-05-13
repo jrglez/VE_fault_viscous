@@ -1,0 +1,29 @@
+\hypertarget{structvsf_1_1PointHistory}{\section{vsf\-:\-:Point\-History$<$ dim $>$ Struct Template Reference}
+\label{structvsf_1_1PointHistory}\index{vsf\-::\-Point\-History$<$ dim $>$@{vsf\-::\-Point\-History$<$ dim $>$}}
+}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+Tensor$<$ 2, 3 $>$ \hyperlink{structvsf_1_1PointHistory_af104d4345ce885e7392264be43262504}{old\-\_\-stress}
+\item 
+Tensor$<$ 1, 2 $>$ \hyperlink{structvsf_1_1PointHistory_ae475ec0684d70235a27c6a1136e28fd7}{elastic\-\_\-stress}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$int dim$>$struct vsf\-::\-Point\-History$<$ dim $>$}
+
+We first define a structure where we will store the old data that we will need to compute the right hand side of the equation. In this case it is enough if we save the elastic stress from the previous time step. 
+
+\subsection{Member Data Documentation}
+\hypertarget{structvsf_1_1PointHistory_ae475ec0684d70235a27c6a1136e28fd7}{\index{vsf\-::\-Point\-History@{vsf\-::\-Point\-History}!elastic\-\_\-stress@{elastic\-\_\-stress}}
+\index{elastic\-\_\-stress@{elastic\-\_\-stress}!vsf::PointHistory@{vsf\-::\-Point\-History}}
+\subsubsection[{elastic\-\_\-stress}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int dim$>$ Tensor$<$1,2$>$ {\bf vsf\-::\-Point\-History}$<$ dim $>$\-::elastic\-\_\-stress}}\label{structvsf_1_1PointHistory_ae475ec0684d70235a27c6a1136e28fd7}
+\hypertarget{structvsf_1_1PointHistory_af104d4345ce885e7392264be43262504}{\index{vsf\-::\-Point\-History@{vsf\-::\-Point\-History}!old\-\_\-stress@{old\-\_\-stress}}
+\index{old\-\_\-stress@{old\-\_\-stress}!vsf::PointHistory@{vsf\-::\-Point\-History}}
+\subsubsection[{old\-\_\-stress}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int dim$>$ Tensor$<$2,3$>$ {\bf vsf\-::\-Point\-History}$<$ dim $>$\-::old\-\_\-stress}}\label{structvsf_1_1PointHistory_af104d4345ce885e7392264be43262504}
+
+
+The documentation for this struct was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{VE__fault__viscous_8cc}{V\-E\-\_\-fault\-\_\-viscous.\-cc}\end{DoxyCompactItemize}

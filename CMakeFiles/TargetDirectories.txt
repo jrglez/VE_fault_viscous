@@ -1,0 +1,8 @@
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/VE_fault_viscous.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/debug.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/distclean.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/info.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/release.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/run.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/runclean.dir
+/home/jrglez/Dropbox/Mine/Modeling/dealII/myprojects/VE_fault_viscous/CMakeFiles/strip_comments.dir

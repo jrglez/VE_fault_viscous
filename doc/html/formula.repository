@@ -1,0 +1,93 @@
+\form#0:$(v_{x}=v_{y}=0)$
+\form#1:$(\partial z=0)$
+\form#2:\[\partial_i{(\sigma_{ij})}=f_j\]
+\form#3:$i$
+\form#4:$j$
+\form#5:$\sigma$
+\form#6:$f$
+\form#7:$f_j=f^g_j=\rho g \left(1-\alpha T \right) \delta_{iy}$
+\form#8:$\tau_{ij}$
+\form#9:$P$
+\form#10:\[ \sigma_{ij} = \tau_{ij}-P \delta_{ij} \]
+\form#11:\[\partial_i \tau_{ij} - \partial_j P = \rho g \left( 1 - \alpha T \right) \delta_{jy} \]
+\form#12:\[ \dot \varepsilon = \dot \varepsilon^e + \dot \varepsilon^v = \frac{\check{\tau}}{2\mu} + \frac{\tau}{2\eta} \]
+\form#13:$\dot\varepsilon$
+\form#14:$\check{\tau}$
+\form#15:$\mu$
+\form#16:$\eta$
+\form#17:$u$
+\form#18:\[ \dot \varepsilon_{ij} = \frac{1}{2} \left( \partial_j v_i + \partial_i v_j \right) \]
+\form#19:\[ \check{\tau} = \frac{D\tau}{Dt}+\tau\omega-\omega\tau\]
+\form#20:$\omega$
+\form#21:\[\omega_{ij} = \frac{1}{2} \left( \partial_j v_i - \partial_i v_j \right) \]
+\form#22:\[\check{\tau} = \frac{\tau^t - \tau ^{t-1}}{\Delta t} + \tau^{t-1}\omega^{t-1} - \omega^{t-1}\tau^{t-1} \]
+\form#23:$t$
+\form#24:$t-1$
+\form#25:$\Delta t$
+\form#26:\[ \tau^t = 2 \eta_{ef} \dot\varepsilon^t + \eta_{ef} \left[\frac{1}{\mu\Delta t} \tau ^{t-1} + \frac {1}{\mu} \left( \omega^{t-1}\tau^{t-1} - \tau^{t-1}\omega^{t-1} \right) \right] \]
+\form#27:$\eta_{ef}$
+\form#28:\[ \eta_{ef} = \eta \frac{\mu \Delta t}{\mu \Delta t + \eta} \]
+\form#29:\[ \partial_i \left(2 \eta_{ef} \dot\varepsilon_{ij} \right) - \partial_j P = f^g_j - \partial_i \left\{ \eta_{ef} \left[\frac{1}{\mu\Delta t} \tau ^{t-1}_{ij} + \frac {1}{\mu} \left( \omega^{t-1}_{ik}\tau^{t-1}_{kj} - \tau^{t-1}_{ik}\omega^{t-1}_{kj} \right) \right] \right\} \]
+\form#30:$ g^e_{ij}$
+\form#31:\[ f^e_j = -\partial_i g^e_{ij} = -\partial_i \left\{ \eta_{ef} \left[\frac{1}{\mu\Delta t} \tau ^{t-1}_{ij} + \frac {1}{\mu} \left( \omega^{t-1}_{ik}\tau^{t-1}_{kj} - \tau^{t-1}_{ik}\omega^{t-1}_{kj} \right) \right] \right\} \]
+\form#32:\[ \partial_i \left(2 \eta_{ef} \dot\varepsilon_{ij} \right) - \partial_j P = f^g_j + f^e_j \]
+\form#33:$\tau^0$
+\form#34:$v^0$
+\form#35:$\omega^0(v^0)$
+\form#36:$f^{e^1}_j = \partial_i g^{e^1}_{ij}(\tau^0,\omega^0)$
+\form#37:$v^1$
+\form#38:$\dot\varepsilon^1(v^1)$
+\form#39:$\tau^1(\dot{\varepsilon}^1,\tau^0,\omega^0)$
+\form#40:$\omega^1(v^1)$
+\form#41:$x-y$
+\form#42:$y-z$
+\form#43:$z$
+\form#44:$(\frac{\partial}{\partial z}=0)$
+\form#45:$\varepsilon_{xx}=\varepsilon_{yy}=\varepsilon_{zz}=\varepsilon_{xy}=\varepsilon_{yx}=0$
+\form#46:$\omega_{xx}=\omega_{yy}=\omega_{zz}=\omega_{xy}=\omega_{yx}=0$
+\form#47:\[-\partial_x P = f^e_x \]
+\form#48:\[-\partial_y P = f^g_y + f^e_y \]
+\form#49:\[\partial_x(2\eta_{ef}\varepsilon_{xz})+\partial_y(2\eta_{ef}\varepsilon_{yz})=f^e_z\]
+\form#50:\[f^e_x = -\partial_x \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{xx} + \frac{1}{\mu} \left(\omega^{t-1}_{xz}\tau^{t-1}_{zx} - \tau^{t-1}_{xz}\omega^{t-1}_{zx} \right) \right] \right\} -\partial_y \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{yx} + \frac{1}{\mu} \left(\omega^{t-1}_{yz}\tau^{t-1}_{zx} - \tau^{t-1}_{yz}\omega^{t-1}_{zx} \right) \right] \right\} \]
+\form#51:\[f^e_y = -\partial_x \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{xy} + \frac{1}{\mu} \left(\omega^{t-1}_{xz}\tau^{t-1}_{zy} - \tau^{t-1}_{xz}\omega^{t-1}_{zy} \right) \right] \right\} -\partial_y \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{yy} + \frac{1}{\mu} \left(\omega^{t-1}_{yz}\tau^{t-1}_{zy} - \tau^{t-1}_{yz}\omega^{t-1}_{zy} \right) \right] \right\} \]
+\form#52:\[f^e_z = -\partial_x \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{xz} + \frac{1}{\mu} \left(\omega^{t-1}_{xz}\tau^{t-1}_{zz} - \tau^{t-1}_{xx}\omega^{t-1}_{xz} - \tau^{t-1}_{xy}\omega^{t-1}_{yz} \right) \right] \right\} -\partial_y \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{yz} + \frac{1}{\mu} \left(\omega^{t-1}_{yz}\tau^{t-1}_{zz} - \tau^{t-1}_{yx}\omega^{t-1}_{xz} - \tau^{t-1}_{yy}\omega^{t-1}_{yz} \right) \right] \right\}\]
+\form#53:$v_z$
+\form#54:\[\partial_x \left(\eta_{ef}\partial_x v_z \right) + \partial_y \left(\eta_{ef}\partial_y v_z \right) = f^e_z \]
+\form#55:\[\eta_{ef}\Delta v_z = f^e_z \]
+\form#56:$a$
+\form#57:$b$
+\form#58:$(v_z)$
+\form#59:$\Gamma_0$
+\form#60:$v_z=0$
+\form#61:$\Gamma_1$
+\form#62:$v_z=V$
+\form#63:$\Gamma_2$
+\form#64:$\boldsymbol{n} \cdot \tau - P =0$
+\form#65:$\Gamma_3$
+\form#66:$\boldsymbol{n} \cdot \tau - P =S$
+\form#67:\[ \nabla \left(\eta_{ef}\nabla v_z\right)=f^e_z\]
+\form#68:$v$
+\form#69:\[\int_{\Omega} v \cdot \nabla\left(\eta_{ef}\nabla v_z \right) = \int_{\Omega} v \cdot f^e_z \phi \]
+\form#70:\[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla v_z = -\int_{\Omega} v \cdot f^e_z + \int_{\partial \Omega} v \cdot \eta_{ef} \boldsymbol{n} \nabla v_z \]
+\form#71:$ f^e_z = -\partial_i g^e_{iz} $
+\form#72:\[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla v_z = -\int_{\Omega} \nabla v \cdot \boldsymbol{g^e_z} + \int_{\partial \Omega} v \cdot \eta_{ef} \boldsymbol{n} \nabla v_z + \int_{\partial \Omega} v \cdot \boldsymbol{n} \boldsymbol{g^e_z} \]
+\form#73:$ \tau_{ij}$
+\form#74:\[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla v_z = -\int_{\Omega} \nabla v \cdot \boldsymbol{g^e_z} + \int_{\partial \Omega} v \cdot \boldsymbol{n} \tau_{iz} \]
+\form#75:\[ \left( \nabla v, \eta_{ef}\nabla v_z \right)_{\Omega} = - \left( \nabla v, \boldsymbol{g^e_z} \right)_{\Omega} + \left(v, \boldsymbol{n} \boldsymbol{\tau_{z}} \right)_{\partial \Omega} \]
+\form#76:$\boldsymbol{\tau_{z}} = \tau_{iz}$
+\form#77:$v = 0$
+\form#78:$v \neq 0$
+\form#79:\[ \left( \nabla v, \eta_{ef}\nabla v_z \right)_{\Omega} = - \left( \nabla v, \boldsymbol{g^e_z} \right)_{\Omega} + \left(v, S \right)_{\Gamma^3} \]
+\form#80:$(a, b)$
+\form#81:$ \int a \cdot b $
+\form#82:$S$
+\form#83:$ v_z $
+\form#84:$ \sum_{j} U_j v_j(\boldsymbol{x}) $
+\form#85:$U_j$
+\form#86:\[AU=B\]
+\form#87:\[A_{ij} = (v_i,v_j)_{\Omega}\]
+\form#88:\[B_i = -(\nabla v_i, \boldsymbol{g^e_z})_\Omega + (v_i, S)_{\Gamma_3} \]
+\form#89:$d$
+\form#90:$V$
+\form#91:$D$
+\form#92:\[ \Delta t = \frac{min(d)}{max(v_z)} \]
