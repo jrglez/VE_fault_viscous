@@ -33,7 +33,7 @@
  * This code simulates the deformation of a viscoelastic medium in presence
  * of a discrete fault under the anti-plane shear approximation.
  * Under this assumption there is no displacement in the modeled plane
- * \f$(u_{x}=u_{y}=0)\f$ and there is no spatial variation in the direction
+ * \f$(v_{x}=v_{y}=0)\f$ and there is no spatial variation in the direction
  * perpendicular to the modeled plane \f$(\partial z=0)\f$. If the case of a
  * uniform shear modulus and shear viscosity, the problem is reduced to the
  * Poisson equation where the right-hand side depends on the velocity values
@@ -77,7 +77,7 @@
  * strain rate can be expressed in terms of the velocity of the continuum
  * \f$u\f$:
  * \f[ \dot \varepsilon_{ij} =
- * \frac{1}{2} \left( \partial_j u_i + \partial_i u_j \right) \f]
+ * \frac{1}{2} \left( \partial_j v_i + \partial_i v_j \right) \f]
  *
  * The Jaumann derivative is an observer independent objective rate (see
  * /cite harder_91 for a discussion about the effect of using different objective
@@ -87,7 +87,7 @@
  * where \f$\omega\f$ is the material spin tensor, which can be expressed
  * in terms of the velocity:
  * \f[\omega_{ij} =
- * \frac{1}{2} \left( \partial_j u_i - \partial_i u_j \right) \f]
+ * \frac{1}{2} \left( \partial_j v_i - \partial_i v_j \right) \f]
  *
  * \subsection num_approach Numerical approach
  * To use a semi-viscous approach we need to manipulate the constitutive equation
@@ -135,15 +135,15 @@
  * f^g_j + f^e_j \f]
  *
  * Therefore, we will follow the next scheme to solve the problem:
- *   -# Input initial conditions for the stress \f$\tau^0\f$ and velocity \f$u^0\f$.
- *   -# Compute the initial material spin \f$\omega^0(u^0)\f$.
+ *   -# Input initial conditions for the stress \f$\tau^0\f$ and velocity \f$v^0\f$.
+ *   -# Compute the initial material spin \f$\omega^0(v^0)\f$.
  *   -# Compute the internal elastic force that will be used in the firts time step
  *   \f$f^{e^1}_j = \partial_i g^{e^1}_{ij}(\tau^0,\omega^0)\f$.
  *   -# Solve the momentum equation to obtain the velocity of the first time step
- *   \f$u^1\f$.
- *   -# Compute the strain rate of the first time step \f$\dot\varepsilon^1(u^1)\f$,
+ *   \f$v^1\f$.
+ *   -# Compute the strain rate of the first time step \f$\dot\varepsilon^1(v^1)\f$,
  *   stress \f$\tau^1(\dot{\varepsilon}^1,\tau^0,\omega^0)\f$ and the material spin
- *   \f$\omega^1(u^1)\f$.
+ *   \f$\omega^1(v^1)\f$.
  *   -# Repeat steps 3 to 5.
  *
  *
@@ -158,7 +158,7 @@
  * \image latex aps.eps "Figure 1: Schematic representation of a fault and the modeled plane"
  *
  * In this case, we can considered that displacement only occurs in the \f$z\f$
- * direction \f$(u_{x}=u_{y}=0)\f$. Moreover, under this approximation no
+ * direction \f$(v_{x}=v_{y}=0)\f$. Moreover, under this approximation no
  * magnitude can vary along the \f$z\f$ direction \f$(\frac{\partial}{\partial z}=0)\f$.
  * Therefore, under this approximation
  * \f$\varepsilon_{xx}=\varepsilon_{yy}=\varepsilon_{zz}=\varepsilon_{xy}=\varepsilon_{yx}=0\f$
@@ -189,28 +189,28 @@
  * \tau^{t-1}_{yy}\omega^{t-1}_{yz} \right) \right] \right\}\f]
  *
  * The velocity at time \f$t\f$ only appears in the \f$z\f$ component equation. Therefore,
- * we will only solve said equation. In terms of \f$u_z\f$ the equation is:
- * \f[\partial_x \left(\eta_{ef}\partial_x u_z \right) +
- * \partial_y \left(\eta_{ef}\partial_y u_z \right) = f^e_z \f]
+ * we will only solve said equation. In terms of \f$v_z\f$ the equation is:
+ * \f[\partial_x \left(\eta_{ef}\partial_x v_z \right) +
+ * \partial_y \left(\eta_{ef}\partial_y v_z \right) = f^e_z \f]
  *
  * and for uniform effective viscosity we obtain the Poisson equation:
  *
- * \f[\eta_{ef}\Delta u_z = f^e_z \f]
+ * \f[\eta_{ef}\Delta v_z = f^e_z \f]
  *
  *
  * \section model Modeling
  * \subsection setup Setup
  * Here we will solve the visco-elastic equation in a two-dimensional domain
  * of dimensions \f$a\f$ by \f$b\f$. We will solve for the velocity in the
- * direction perpendicular to the plane \f$(u_z)\f$ caused by a fault also
+ * direction perpendicular to the plane \f$(v_z)\f$ caused by a fault also
  * perpendicular to the modeled plane.
  *
  * There are four possible boundary conditions:
  *
- * - \f$\Gamma_0\f$ - The locked part above the fault, with imposed zero velocity, \f$u_z=0\f$
+ * - \f$\Gamma_0\f$ - The locked part above the fault, with imposed zero velocity, \f$v_z=0\f$
  * (homogeneous Dirichlet boundary conditions).
  *
- * - \f$\Gamma_1\f$ - Regions of imposed velocity, \f$u_z=V\f$ (non-homogeneous Dirichlet
+ * - \f$\Gamma_1\f$ - Regions of imposed velocity, \f$v_z=V\f$ (non-homogeneous Dirichlet
  * boundary conditions).
  *
  * - \f$\Gamma_2\f$ - Zero tangential stress boundaries, \f$\boldsymbol{n} \cdot \tau - P =0\f$
@@ -225,33 +225,33 @@
  * In order to solve the equation using the Finite Element Method we need to derive
  * the weak form. We will begin with the partial differential equation that governs
  * the velocity in a visco-elastic medium under the anti-plane shear approximation:
- * \f[ \nabla \left(\eta_{ef}\nabla u_z\right)=f^e_z\f]
+ * \f[ \nabla \left(\eta_{ef}\nabla v_z\right)=f^e_z\f]
  *
  * where i=1,2. First we multiply the equation from the left by a test function \f$v\f$,
  * and then we integrate over the whole domain:
- * \f[\int_{\Omega} v \cdot \nabla\left(\eta_{ef}\nabla u_z \right) =
+ * \f[\int_{\Omega} v \cdot \nabla\left(\eta_{ef}\nabla v_z \right) =
  * \int_{\Omega} v \cdot f^e_z \phi \f]
  *
  * Integrating by parts and using the Gauss theorem
- * \f[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla u_z =
- * -\int_{\Omega} v \cdot f^e_z + \int_{\partial \Omega} v \cdot \eta_{ef} \boldsymbol{n} \nabla u_z \f]
+ * \f[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla v_z =
+ * -\int_{\Omega} v \cdot f^e_z + \int_{\partial \Omega} v \cdot \eta_{ef} \boldsymbol{n} \nabla v_z \f]
  *
  * We can integrate by parts the term corresponding to the internal elastic force
  * if we take into account that it is in fact the divergence of another function
  * \f$ f^e_z = -\partial_i g^e_{iz} \f$. Therefore, we obtain:
- * \f[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla u_z =
+ * \f[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla v_z =
  * -\int_{\Omega} \nabla v \cdot \boldsymbol{g^e_z} +
- * \int_{\partial \Omega} v \cdot \eta_{ef} \boldsymbol{n} \nabla u_z +
+ * \int_{\partial \Omega} v \cdot \eta_{ef} \boldsymbol{n} \nabla v_z +
  * \int_{\partial \Omega} v \cdot \boldsymbol{n} \boldsymbol{g^e_z} \f]
  *
  * Considering that the boundary terms are related to the stress tensor
  * \f$ \tau_{ij}\f$ we obtain:
- * \f[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla u_z =
+ * \f[ \int_{\Omega} \nabla v \cdot \eta_{ef}\nabla v_z =
  * -\int_{\Omega} \nabla v \cdot \boldsymbol{g^e_z} +
  * \int_{\partial \Omega} v \cdot \boldsymbol{n} \tau_{iz} \f]
  *
  * or:
- * \f[ \left( \nabla v, \eta_{ef}\nabla u_z \right)_{\Omega} =
+ * \f[ \left( \nabla v, \eta_{ef}\nabla v_z \right)_{\Omega} =
  * - \left( \nabla v, \boldsymbol{g^e_z} \right)_{\Omega} +
  * \left(v, \boldsymbol{n} \boldsymbol{\tau_{z}} \right)_{\partial \Omega} \f]
  *
@@ -264,7 +264,7 @@
  * impose a non-zero tangential stress (non-homogeneous Neumann boundary conditions), this is
  * \f$\Gamma_3\f$, the test functions \f$v \neq 0\f$, and that part of the boundary integral
  * has to be included in the weak form.
-  * \f[ \left( \nabla v, \eta_{ef}\nabla u_z \right)_{\Omega} =
+  * \f[ \left( \nabla v, \eta_{ef}\nabla v_z \right)_{\Omega} =
  * - \left( \nabla v, \boldsymbol{g^e_z} \right)_{\Omega} +
  * \left(v, S \right)_{\Gamma^3} \f]
  *
@@ -272,7 +272,7 @@
  * stress at the boundary.
  *
  * We can now  replace the exact
- * solution \f$ u_z \f$ for an approximate solution in terms of the shape functions,
+ * solution \f$ v_z \f$ for an approximate solution in terms of the shape functions,
  * \f$ \sum_{j} U_j v_j(\boldsymbol{x}) \f$. Here \f$U_j\f$ are the expansion coefficients we need to
  * determine to find the approximate solution to the laplace equation. Then, the problem
  * is reduced to solving
@@ -383,6 +383,7 @@ namespace vsf
   struct PointHistory
   {
       Tensor<2,3>       old_stress;
+      Tensor<1,2>       elastic_stress;
   };
   /**
    * We declare and define some function classes that represent the body force, the effective
@@ -867,6 +868,7 @@ namespace vsf
 
     std::vector<PointHistory<dim> >               quadrature_point_history;
     std::vector< std::vector< Vector<double> > >  history_field ;
+    std::vector< Vector<double> >                 elastic_stress;
 
     const RefinementMode                          refinement_mode;
 
@@ -899,6 +901,7 @@ namespace vsf
     fe (&fe),
     history_fe (&history_fe),
     history_field (3, std::vector< Vector<double> >(3)),
+    elastic_stress (dim),
     refinement_mode (refinement_mode),
     model (model),
     n_initial_global_refinement (2),
@@ -1238,10 +1241,12 @@ namespace vsf
         unrefined_solution[2] = displacement;
 
         SolutionTransfer<dim> history_trans(history_dof_handler);
-        std::vector<Vector<double> > unrefined_history_field (9, Vector<double>(history_dof_handler.n_dofs()));
+        std::vector<Vector<double> > unrefined_history_field (9+dim, Vector<double>(history_dof_handler.n_dofs()));
         for (unsigned int i=0; i<3; ++i)
           for (unsigned int j=0; j<3; ++j)
             unrefined_history_field [3 * i + j] = history_field[i][j];
+        for (unsigned int i=0; i<dim; ++i)
+          unrefined_history_field [9+i] =  elastic_stress[i];
 
         triangulation.prepare_coarsening_and_refinement();
         solution_trans.prepare_for_coarsening_and_refinement(unrefined_solution);
@@ -1269,11 +1274,13 @@ namespace vsf
         old_solution = refined_solution[1];
         displacement = refined_solution[2];
 
-        std::vector<Vector<double> > refined_history_field (9, Vector<double>(history_dof_handler.n_dofs()));
+        std::vector<Vector<double> > refined_history_field (9+dim, Vector<double>(history_dof_handler.n_dofs()));
         history_trans.interpolate(unrefined_history_field, refined_history_field);
         for (unsigned int i=0; i<3; ++i)
           for (unsigned int j=0; j<3; ++j)
             history_field[i][j] = refined_history_field[3 * i + j];
+        for (unsigned int i=0; i<dim; ++i)
+          elastic_stress[i] = refined_history_field[9+i];
 
         break;
       }
@@ -1305,6 +1312,14 @@ namespace vsf
         local_history_values_at_qpoints[i][j].reinit(quadrature_formula.size());
         local_history_fe_values[i][j].reinit(history_fe->dofs_per_cell);
       }
+    std::vector< Vector<double> >
+                 local_elastic_stress_at_qpoints (dim),
+                 local_elastic_stress_fe_values (dim);
+    for (unsigned int i=0; i<dim; i++)
+      {
+        local_elastic_stress_at_qpoints[i].reinit(quadrature_formula.size());
+        local_elastic_stress_fe_values[i].reinit(history_fe->dofs_per_cell);
+      }
     FullMatrix<double> qpoint_to_dof_matrix (history_fe->dofs_per_cell,
                                              quadrature_formula.size());
     FETools::compute_projection_from_quadrature_points_matrix
@@ -1335,6 +1350,16 @@ namespace vsf
             dg_cell->set_dof_values (local_history_fe_values[i][j],
                                      history_field[i][j]);
           }
+        for (unsigned int i=0; i<dim; i++)
+          {
+            for (unsigned int q=0; q<quadrature_formula.size(); ++q)
+              local_elastic_stress_at_qpoints[i](q)
+                   = local_quadrature_points_history[q].elastic_stress[i];
+            qpoint_to_dof_matrix.vmult (local_elastic_stress_fe_values[i],
+                                        local_elastic_stress_at_qpoints[i]);
+            dg_cell->set_dof_values (local_elastic_stress_fe_values[i],
+                                     elastic_stress[i]);
+          }
       }
   }
 
@@ -1356,6 +1381,15 @@ namespace vsf
           local_history_values_at_qpoints[i][j].reinit(quadrature_formula.size());
           local_history_fe_values[i][j].reinit(history_fe->dofs_per_cell);
         }
+
+    std::vector<Vector<double> >
+                       local_elastic_stress_at_qpoints (dim),
+                       local_elastic_stress_fe_values (dim);
+          for (unsigned int i=0; i<dim; i++)
+            {
+              local_elastic_stress_at_qpoints[i].reinit(quadrature_formula.size());
+              local_elastic_stress_fe_values[i].reinit(history_fe->dofs_per_cell);
+            }
 
     FullMatrix<double> dof_to_qpoint_matrix (quadrature_formula.size(),
                                              history_fe->dofs_per_cell);
@@ -1387,6 +1421,16 @@ namespace vsf
           for (unsigned int q=0; q<quadrature_formula.size(); ++q)
             local_quadrature_points_history[q].old_stress[i][j]
                        = local_history_values_at_qpoints[i][j](q);
+        }
+      for (unsigned int i=0; i<dim; ++i)
+        {
+          dg_cell->get_dof_values (elastic_stress[i],
+                                   local_elastic_stress_fe_values[i]);
+          dof_to_qpoint_matrix.vmult (local_elastic_stress_at_qpoints[i],
+                                      local_elastic_stress_fe_values[i]);
+          for (unsigned int q=0; q<quadrature_formula.size(); ++q)
+            local_quadrature_points_history[q].elastic_stress[i]
+                       = local_elastic_stress_at_qpoints[i](q);
         }
     }
   }
@@ -1441,6 +1485,8 @@ namespace vsf
     for (unsigned int i=0; i<3; i++)
           for (unsigned int j=0; j<3; j++)
             history_field[i][j].reinit(history_dof_handler.n_dofs());
+    for (unsigned int i=0; i<dim;  i++)
+      elastic_stress[i].reinit(history_dof_handler.n_dofs());
 
     system_rhs.reinit (dof_handler.n_dofs());
   }
@@ -1516,6 +1562,7 @@ namespace vsf
 
 
           Tensor<2,3> new_stress;
+          Tensor<1,dim> g_e_z;
 
           Tensor<2,3> old_stress = local_quadrature_points_history[q].old_stress;
 
@@ -1532,6 +1579,13 @@ namespace vsf
           old_spin[2][0] = old_solution_gradients[q][0];
           old_spin[2][1] = old_solution_gradients[q][1];
 
+          Tensor<2,3> new_spin;
+          new_spin[0][2] = -new_solution_gradients[q][0];
+          new_spin[1][2] = -new_solution_gradients[q][1];
+          new_spin[2][0] = new_solution_gradients[q][0];
+          new_spin[2][1] = new_solution_gradients[q][1];
+
+
           for (unsigned int i=0; i < 3; ++i)
             for (unsigned int j=0; j < 3; ++j)
               {
@@ -1544,7 +1598,22 @@ namespace vsf
                                          old_stress[i][k] * old_spin[k][j]);
                   }
               }
+          for (unsigned int l=0; l<dim; ++l)
+              {
+                g_e_z[l] = (effective_viscosity *
+                            new_stress[l][2] /
+                            em_values[q] /
+                            time_step);
+                for (unsigned int k=0; k<3; ++k)
+                  g_e_z[l] += (effective_viscosity *
+                               ((new_spin[l][k] *
+                                 new_stress[k][2]) -
+                                (new_stress[l][k] *
+                                 new_spin[k][2])) /
+                               em_values[q]);
+              }
           local_quadrature_points_history[q].old_stress = new_stress;
+          local_quadrature_points_history[q].elastic_stress = g_e_z;
         }
     }
   }
@@ -1719,7 +1788,7 @@ namespace vsf
    * the domain was three-dimensional, the distance that a particle can travel (in the direction
    * perpendicular to the modeled plane) within one time step is no larger than
    * the diameter of a single cell:
-   * \f[ \Delta t = \frac{min(d)}{max(u_z)} \f]
+   * \f[ \Delta t = \frac{min(d)}{max(v_z)} \f]
    *
    * The function GridTools::minimal_cell_diameter computes the minimal diameter of all cells.
    * Since the cells are all squares, the minimal edge length is be the minimal
@@ -1758,6 +1827,7 @@ namespace vsf
     time_step = GridTools::minimal_cell_diameter(triangulation) /
                 max_velocity /
                 std::sqrt(dim + 1.0);
+//    time_step = 1.0e3 * this->viscosity / this->elastic_modulus;
   }
 
 
@@ -1943,9 +2013,11 @@ namespace vsf
 
     DataOut<dim> data_out_history;
     data_out_history.attach_dof_handler (history_dof_handler);
+    data_out_history.add_data_vector (elastic_stress[0], "elastic_stress_xz");
+    data_out_history.add_data_vector (elastic_stress[1], "elastic_stress_yz");
     data_out_history.add_data_vector (history_field[0][2], "history_field_xz");
     data_out_history.add_data_vector (history_field[1][2], "history_field_yz");
-    data_out_history.add_data_vector (history_field[2][2], "history_field_zz");
+//    data_out_history.add_data_vector (history_field[2][2], "history_field_zz");
 
     data_out_history.build_patches (history_fe->degree);
     data_out_history.write_vtk (output_history);
