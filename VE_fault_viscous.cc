@@ -1,13 +1,8 @@
 /* TO DO:
- * - AQUI: Puedo output el stress tensor o la fuerza como la solucion?
  * - AQUI: time stepping works, do results make sense?
  *   + De momento no cambia mucho y de repente se des estabiliza. Por que?
- *   + Necesito calcular el desplazamiento
  *   + probar con elastico puro
- * - Use another time step?
- * - AQUI: Mesh refinement
- *  + Do this first?
- *  + Step 26 and 31 (will it work with the stress?)
+ * - Use another time step? (maybe try relaxation time?)
  * - Compare solutions with analytical
  * - Remove comparason with turcotte and savage
  * - Weakening mechanism
@@ -65,7 +60,7 @@
  *
  * and the equation of conservation of motion will be:
  * \f[\partial_i \tau_{ij} - \partial_j P =
- * \rho g \left( 1 - \alpha T \right) \delta_jy) \f]
+ * \rho g \left( 1 - \alpha T \right) \delta_{jy} \f]
  *
  *
  * Since we are going to use a semi-viscous approach we need a constitutive
@@ -74,7 +69,7 @@
  * and consider that the total deformation is acomodated by a linear combination
  * of elastic and viscous deformation:
  * \f[ \dot \varepsilon = \dot \varepsilon^e + \dot \varepsilon^v =
- * \frac{\check{\tau}}{2\mu} = \frac{\tau}{2\eta} \f]
+ * \frac{\check{\tau}}{2\mu} + \frac{\tau}{2\eta} \f]
  *
  * where \f$\dot\varepsilon\f$ is the strain rate, \f$\check{\tau}\f$
  * is the Jaumann corotatonal stress rate for an element of the continuum,
@@ -101,7 +96,7 @@
  * This will give us an PDE of the velocities, which we will have to solve.To achieve
  * this, the first step is to express the Jaumann stress rate as a first order
  * difference form:
- * \f[\check{\tau} = \frac{\tau^t - \tau ^{t-1}}{\Delta t} + \tau^{t-1}\omega{t-1}
+ * \f[\check{\tau} = \frac{\tau^t - \tau ^{t-1}}{\Delta t} + \tau^{t-1}\omega^{t-1}
  * - \omega^{t-1}\tau^{t-1} \f]
  *
  * where the superscript \f$t\f$ indicates the current time step and \f$t-1\f$ the
@@ -119,9 +114,9 @@
  * \f[ \eta_{ef} = \eta \frac{\mu \Delta t}{\mu \Delta t + \eta} \f]
  *
  * Using this in the momentum equation we obtain:
- * \f[ \partial_i \left(2 \eta_ef \dot\varepsilon_{ij} \right) - \partial_j P =
+ * \f[ \partial_i \left(2 \eta_{ef} \dot\varepsilon_{ij} \right) - \partial_j P =
  * f^g_j
- * + \partial_i \left\{ \eta_{ef} \left[\frac{1}{\mu\Delta t} \tau ^{t-1}_{ij} +
+ * - \partial_i \left\{ \eta_{ef} \left[\frac{1}{\mu\Delta t} \tau ^{t-1}_{ij} +
  * \frac {1}{\mu} \left( \omega^{t-1}_{ik}\tau^{t-1}_{kj} -
  * \tau^{t-1}_{ik}\omega^{t-1}_{kj} \right) \right] \right\} \f]
  *
@@ -146,7 +141,7 @@
  *   \f$f^{e^1}_j = \partial_i g^{e^1}_{ij}(\tau^0,\omega^0)\f$.
  *   -# Solve the momentum equation to obtain the velocity of the first time step
  *   \f$u^1\f$.
- *   -# Compute the strain rate of the first time step \f$\dot\varepsiolon^1(u^1)\f$,
+ *   -# Compute the strain rate of the first time step \f$\dot\varepsilon^1(u^1)\f$,
  *   stress \f$\tau^1(\dot{\varepsilon}^1,\tau^0,\omega^0)\f$ and the material spin
  *   \f$\omega^1(u^1)\f$.
  *   -# Repeat steps 3 to 5.
@@ -286,6 +281,28 @@
  * \f[A_{ij} = (v_i,v_j)_{\Omega}\f]
  * \f[B_i = -(\nabla v_i, \boldsymbol{g^e_z})_\Omega
  * + (v_i, S)_{\Gamma_3} \f]
+ *
+ *
+ * \subsection adaptive_refinement Adaptive Mesh Refinement in Time Dependent Problems
+ * Every time step we need to use the solution from the two last time steps and the visco-elastic
+ * stress from the previous one. The old solutions are stored in a
+ * <a href="https://www.dealii.org/8.4.0/doxygen/deal.II/classVector.html">Vector</a> with as
+ * many elements as the degrees of freedom the problem has. The old stress is stored at each
+ * quadrature and can be accessed through a user pointer that each cell holds. Every time the
+ * mesh is refined, the number of cells and degrees of freedom changes, therefore, as part of
+ * the mesh refinement we need to transfer the solution vectors and the old stress from the
+ * old mesh to the new one. For the solution vectors we just need to use
+ * <a href="https://www.dealii.org/8.4.0/doxygen/deal.II/classSolutionTransfer.html">SolutionTransfer</a>
+ * (see for example
+ * <a href="https://www.dealii.org/8.2.0/doxygen/deal.II/step_26.html#codeHeatEquationrefine_meshcode">Step-26</a>).
+ *
+ * Transferring the old stress is slightly more complicated, we need to transfer the data sotred
+ * in the quadrature points to a finite element field that is defined everywhere so that we can
+ * later transfer it to the new mesh (using
+ * <a href="https://www.dealii.org/8.4.0/doxygen/deal.II/classSolutionTransfer.html">SolutionTransfer</a>
+ * and then interpolate it to the new quadrature points. We need a discontinuous field that
+ * matches the values in the quadrature points (we will use a Discontinuous Galerking finite element
+ * <a href="https://www.dealii.org/8.2.0/doxygen/deal.II/classFE__DGQ.html">FE_DGQ</a>).
  */
 
 
@@ -313,6 +330,8 @@
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
+#include <deal.II/base/smartpointer.h>
+#include <deal.II/base/convergence_table.h>
 #include <deal.II/lac/vector.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparse_matrix.h>
@@ -331,17 +350,16 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
+#include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/fe_tools.h>
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/error_estimator.h>
 #include <deal.II/numerics/data_out.h>
-
-
-#include <deal.II/dofs/dof_renumbering.h>
-#include <deal.II/base/smartpointer.h>
 #include <deal.II/numerics/vector_tools.h>
-#include <deal.II/base/convergence_table.h>
-#include <deal.II/fe/fe_values.h>
+#include <deal.II/numerics/solution_transfer.h>
 
 #include <typeinfo>
 #include <fstream>
@@ -356,9 +374,10 @@ namespace vsf
   using namespace dealii;
 
   /**
-   * We first define a structure where we will store the old data that we will need to compute
-   * the right hand side of the equation. In this case it is enough if we save the elastic
-   * stress from the previous time step.
+   * \struct PointHistory
+   * We first define a structure where we will store the old data that we will need
+   * to compute the right hand side of the equation. In this case it is enough if we save
+   * the elastic stress from the previous time step.
    */
   template <int dim>
   struct PointHistory
@@ -401,25 +420,25 @@ namespace vsf
   };
 
   template <int dim>
-  const double FunctionBase<dim>::width = 2.0;
+  const double FunctionBase<dim>::width = 2.0e5;
 
   template <int dim>
-  const double FunctionBase<dim>::height = 1.0;
+  const double FunctionBase<dim>::height = 1.0e5;
 
   template <int dim>
-  const double FunctionBase<dim>::locked_depth = 0.25;
+  const double FunctionBase<dim>::locked_depth = 0.25e5;
 
   template <int dim>
-  const double FunctionBase<dim>::boundary_velocity = 1.0;
+  const double FunctionBase<dim>::boundary_velocity = 10/(3.6e3*24.0*365.0);
 
   template <int dim>
-  const double FunctionBase<dim>::boundary_stress = 1.0;
+  const double FunctionBase<dim>::boundary_stress = 1e5;
 
   template <int dim>
-  const double FunctionBase<dim>::elastic_modulus = 1.0;
+  const double FunctionBase<dim>::elastic_modulus = 1.0e11;
 
   template <int dim>
-  const double FunctionBase<dim>::viscosity = 1.0;
+  const double FunctionBase<dim>::viscosity = 1e20;
 
 
 
@@ -460,8 +479,8 @@ namespace vsf
    */
   template <int dim>
   void Solution_Turcotte<dim>::value_list (const std::vector<Point<dim> >   &points,
-                                  std::vector<double>              &values,
-                                  const unsigned int               component) const
+                                           std::vector<double>              &values,
+                                           const unsigned int               component) const
   {
     const unsigned int n_points = points.size();
     Assert (values.size() == n_points,
@@ -792,8 +811,10 @@ namespace vsf
     };
 
     ApShear (const FiniteElement<dim>  &fe, /**< The code is written so different elements can be used and are defined as input parameters.*/
-                           const RefinementMode      refinement_mode,/**< The mesh can be refined either globally (global_refinement) or adaptively (adaptive_refinement), which one to use is defined as an input parameters */
-                           const Model        model /**< The code can be used to simmulate the deformation caused by a fault using two models.*/
+             const FiniteElement<dim>  &history_fe, /**< FE to store history data*/
+             const unsigned int        degree, /**< To be consistent, we define the degree of the finite elements as an input parameter. */
+             const RefinementMode      refinement_mode,/**< The mesh can be refined either globally (global_refinement) or adaptively (adaptive_refinement), which one to use is defined as an input parameters */
+             const Model               model /**< The code can be used to simmulate the deformation caused by a fault using two models.*/
                           );
 
     ~ApShear ();
@@ -801,80 +822,91 @@ namespace vsf
     void run ();
 
   private:
+    void do_first_time_step (); /**< Create the initial mesh and perform preliminary refinements and solve for the initial time step*/
+    void do_time_step (); /**< Solve for successive time steps (includes mesh refinement every several time steps).*/
+
     void make_grid_turcotte (); /**<  Create initial mesh by refining globally several times. Prepare boundaries for Turcotte and Spence Model */
     void make_grid_savage (); /**<  Create initial mesh by refining globally several times. Prepare boundaries for Savage and Burford Model */
-    void refine_grid (); /**<  Refines the mesh either globally of adaptively. */
-    void setup_quadrature_point_history (); /* Initialize the data stored at quadrature points. */
+    void refine_grid (const unsigned int min_grid_level,
+                      const unsigned int max_grid_level); /**<  Refines the mesh adaptively. */
+    void qpoints_to_DG (); /**< The information stored in the quadrature points is moved to a Discontinuous Galerkin space*/
+    void DG_to_qpoints (); /**< The information stored in a Discontinious Galerking space is moved to the quadrature points*/
+
     void setup_system (); /**<  Setup DoFs, renumbering and constraints. */
+    void setup_quadrature_point_history (); /**< Initialize the data stored at quadrature points. */
+    void update_quadrature_point_history (); /**< Update the data stored at quadrature points and sore it in a DG space. */
     void assemble_system (); /**<  Assemble stiffness matrix and RHS. */
+
     void solve (); /**< The solver an refinement steps are defined here.*/
-    void update_quadrature_point_history (); /* Update the data stored at quadrature points and sore it in a DG space. */
-    void get_time_step (); /**< Obtain the maximal velocity to determine the time step increase */
+    void get_time_step_and_displacement (); /**< Obtain the maximal velocity to determine the time step increase and compute the total diplacement*/
+
     void compare_solutions_turcotte (); /**< The numerical solution is compared against Turcotte and Spence Model*/
     void compare_solutions_savage (); /**< The numerical solution is compared against Savage and Burford Model*/
-    void extract_quadrature_point_history (); /**< Save the data stored in quadrature points to output it*/
     void output_results (); /* Results are output in vtk format.*/
 
+    const unsigned int                            degree;
 
-    Triangulation<dim>                      triangulation;
-    DoFHandler<dim>                         dof_handler;
-    const QGauss<dim>                       quadrature_formula;
+    Triangulation<dim>                            triangulation;
+    DoFHandler<dim>                               dof_handler,
+                                                  history_dof_handler;
+    const QGauss<dim>                             quadrature_formula;
 
-    SmartPointer<const FiniteElement<dim> > fe;
+    SmartPointer<const FiniteElement<dim> >       fe,
+                                                  history_fe;
 
-    ConstraintMatrix                        constraints;
+    ConstraintMatrix                              constraints;
 
-    SparsityPattern                         sparsity_pattern;
-    SparseMatrix<double>                    system_matrix;
+    SparsityPattern                               sparsity_pattern;
+    SparseMatrix<double>                          system_matrix;
     
-    Vector<double>                          system_rhs;
-    Vector<double>                          solution;
-    Vector<double>                          old_solution;
+    Vector<double>                                system_rhs,
+                                                  solution,
+                                                  old_solution,
+                                                  displacement;
 
-    std::vector<PointHistory<dim> >         quadrature_point_history;
 
-    const RefinementMode                    refinement_mode;
+    std::vector<PointHistory<dim> >               quadrature_point_history;
+    std::vector< std::vector< Vector<double> > >  history_field ;
 
-    const Model                             model;
+    const RefinementMode                          refinement_mode;
 
-    const unsigned int                      n_initial_cycles;
-    const unsigned int                      n_cycles;
-    unsigned int                            cycle;
-    unsigned int                            step;
+    const Model                                   model;
 
-    double                                  time_step;
+    const unsigned int                            n_initial_global_refinement,
+                                                  n_pre_refinment;
+    unsigned int                                  step;
 
-    std::vector<std::vector<double> >       surface_q_points;
-    std::vector<std::vector<double> >       surface_analytical_solution;
-    std::vector<std::vector<double> >       surface_numerical_solution;
-    std::vector<std::vector<Tensor<2,3> > > old_stress_solution;
-    std::vector<std::vector<double> >       q_points_x;
-    std::vector<std::vector<double> >       q_points_y;
-    std::vector<std::vector<double> >       numerical_solution;
-    std::vector<double>                     error;
+    double                                        time_step,
+                                                  total_time;
+
+    std::vector<double>                           surface_q_points,
+                                                  surface_analytical_solution,
+                                                  surface_numerical_solution;
+    double                                        error;
   };
 
 
   template <int dim>
   ApShear<dim>::ApShear (const FiniteElement<dim> &fe,
-                                                     const RefinementMode refinement_mode,
-                                                     const Model model) :
+                         const FiniteElement<dim> &history_fe,
+                         const unsigned int       degree,
+                         const RefinementMode     refinement_mode,
+                         const                    Model model) :
+    degree (degree),
     dof_handler (triangulation),
-    quadrature_formula(3),
+    history_dof_handler (triangulation),
+    quadrature_formula(degree+1),
     fe (&fe),
+    history_fe (&history_fe),
+    history_field (3, std::vector< Vector<double> >(3)),
     refinement_mode (refinement_mode),
     model (model),
-    n_initial_cycles (5),
-    n_cycles ((refinement_mode==global_refinement)?1:1),
+    n_initial_global_refinement (2),
+    n_pre_refinment ((refinement_mode==global_refinement)?2:5),
+    step (0),
     time_step (1e-6),
-    surface_q_points (n_cycles),
-    surface_analytical_solution (n_cycles),
-    surface_numerical_solution (n_cycles),
-    old_stress_solution (n_cycles, std::vector<Tensor<2,3> >()),
-    q_points_x (n_cycles),
-    q_points_y (n_cycles),
-    numerical_solution (n_cycles),
-    error (n_cycles)
+    total_time (0),
+    error (0)
   {}
 
 
@@ -887,69 +919,116 @@ namespace vsf
 
   /**
    * The problem is solved in several steps:
-   * - 1) Create the mesh
-   * - 2) Initialize the history values stored at quadrature points with zeros
-   * - 3) Setup DoFs and constraints
-   * - 4) Assemble the stiffness matrix and RHS
-   * - 5) Solve
-   * - 6) TO DO: Refine the mesh and repeat 3-5 (Maybe I can use the old stress for the mesh refinement criterion so I don't have to repeat)
-   * - 7) TO DO: Calculate the time step
-   * - 8) Update the values stored in the quadrature points using the new solution
-   * - 9) TO DO: Repeat 3-8
-   * - 10) Compare solutions
+   *   - Initial time step (do_first_time_step()):
+   *     -# Create an initial uniform grid and set boundary conditions
+   *        (make_grid_turcotte() and make_grid_savage()).
+   *     -# Initialize the history values stored at quadrature points with zeros
+   *        (setup_quadrature_point_history()).
+   *     -# Setup DoFs and constraints (setup_system()).
+   *     -# Assemble the stiffness matrix and RHS (assemble_system()).
+   *     -# Solve (solve()).
+   *     -# Refine the mesh adaptively (refine_grid()) and repeat 2-5.
+   *
+   *   - Successive time steps (do_time_step()):
+   *     -# Calculate the time step and compute the total displacement (get_time_step_andisplacement()).
+   *     -# Update the values stored in the quadrature points using the new solution
+   *        (update_quadrature_point_history()).
+   *     -# Assemble the stiffness matrix and RHS (setup_system()).
+   *     -# Solve (solve()).
+   *     -# Every several time steps refine the grid.
+   *       + a) Transfer the quadrature point history to a Discontinuous Galerkin field
+   *            (qpoints_to_DG()).
+   *       + b) Refine the mesh and interpolate the old solution and stress in the new mesh
+   *            (refine_grid()).
+   *       + c) Transfer the data stored in the DG field to the new quadrature points
+   *          (DG_to_qpoints()).
    */
   template <int dim>
   void ApShear<dim>::run ()
   {
-    cycle = 0;
-    double total_time = 0.0;
+    do_first_time_step ();
 
-    std::cout << "Solving cycle " << cycle << std::endl;
-    switch (model)
+    for (step=1; step<21; ++step)
       {
-      case turcotte:
-        make_grid_turcotte ();
-        break;
-      case savage:
-        make_grid_savage ();
-        break;
-      default:
-        Assert (false, ExcNotImplemented());
-      }
-
-    setup_quadrature_point_history ();
-    for (step=0; step<1; ++step)
-      {
-        std::cout << "Step " << step << ", t = " << total_time << std::endl;
-        setup_system ();
-        assemble_system ();
-        solve ();
-        get_time_step ();
-        update_quadrature_point_history ();
-  //    switch (model)
-  //      {
-  //      case turcotte:
-  //        compare_solutions_turcotte ();
-  //        break;
-  //      case savage:
-  //        compare_solutions_savage ();
-  //        break;
-  //      default:
-  //        Assert (false, ExcNotImplemented());
-  //      }
-//        extract_quadrature_point_history ();
-//        output_results ();
-        total_time += time_step;
-        std::cout << solution[100] << std::endl;
-        output_results ();
-      }
+        do_time_step ();
+     }
+    output_results ();
   }
 
+
+  /**
+   * In the first time step we will create a uniform grid and set the boundary conditions depending
+   * on the model that we want to solve. Then we will solve the problem and refine the mesh adaptively
+   * several times
+   */
+  template <int dim>
+  void ApShear<dim>::do_first_time_step ()
+  {
+    std::cout << "Step 0, t = 0" << std::endl;
+
+    std::cout << "Refining initial mesh...";
+    for (unsigned int refinement_step=0; refinement_step<=n_pre_refinment; ++refinement_step)
+      {
+        if (refinement_step==0)
+          switch (model)
+          {
+          case turcotte:
+            make_grid_turcotte ();
+            break;
+          case savage:
+            make_grid_savage ();
+            break;
+          default:
+            Assert (false, ExcNotImplemented());
+          }
+        else
+          refine_grid (n_initial_global_refinement,
+                       n_initial_global_refinement + n_pre_refinment);
+
+        assemble_system ();
+        solve ();
+      }
+    std::cout << triangulation.n_active_cells() << " cells." << std::endl;
+    output_results ();
+  }
+
+
+  /**
+   * In successive time steps we will update the visco-elastic stress (using the
+   * solution from the last two time steps) and we will solve again. The mesh will
+   * be refined adaptively every several time steps.
+   *
+   */
+  template <int dim>
+  void ApShear<dim>::do_time_step ()
+  {
+    get_time_step_and_displacement ();
+    total_time += time_step;
+    std::cout << "Step " << step << ", t = " << total_time << std::endl;
+    update_quadrature_point_history ();
+    assemble_system ();
+    solve ();
+    qpoints_to_DG ();
+    output_results ();
+
+    if (step % 5 == 0)
+      {
+
+        std::cout << "Refining grid...";
+        qpoints_to_DG ();
+        refine_grid (n_initial_global_refinement,
+                             n_initial_global_refinement + n_pre_refinment);
+
+
+        DG_to_qpoints ();
+        std::cout << triangulation.n_active_cells() << " cells." << std::endl;
+      }
+ }
 
 
   /**
    * The initial mesh will consist of regular rectangular elements. This mesh will be refined
-   * in successive steps using AntiplaneShearProblem::refine_grid. First a mesh is created with
+   * in successive steps using refine_grid(). First a mesh is created with
    * elements of the highest possible quality (as close to square as possible). Then this mesh
    * is refined globally a given number of times.
    *
@@ -970,7 +1049,7 @@ namespace vsf
                                                corner_low_left,
                                                corner_up_right);
 
-    triangulation.refine_global (n_initial_cycles);
+    triangulation.refine_global (n_initial_global_refinement);
 
     /**
      * Once the mesh has been created and refined, we assign an indicator to each part of the
@@ -983,10 +1062,10 @@ namespace vsf
      * - 1) Regions of imposed displacement (non-homogeneous Dirichlet
      * boundary conditions).
      *
-     * - 2) Free boundaries, with zero imposed traction (homogeneous Neumann boundary
+     * - 2) Free boundaries, with zero imposed stress (homogeneous Neumann boundary
      * conditions).
      *
-     * - 3) Imposed traction (non-homogeneous boundary conditions.
+     * - 3) Imposed stress (non-homogeneous boundary conditions.
      */
     typename Triangulation<dim>::cell_iterator cell = triangulation.begin (),
                                  endc = triangulation.end();
@@ -998,8 +1077,8 @@ namespace vsf
            * locked part (0) will be on the left boundary, from the top to a certain
            * depth \f$d\f$. From that depth until the bottom of the model the
            * boundary will be free (2). The top and bottom boundaries will also
-           * be free (2). Finally, the leftmost boundary will have an impossed
-           * traction \f$T\f$ (3).
+           * be free (2). Finally, the leftmost boundary will have an imposed
+           * stress \f$S\f$ (3).
            */
           if ((std::fabs(cell->face(face_number)->center()(0) - (0)) < 1e-12) // Locked part
               &&
@@ -1015,86 +1094,89 @@ namespace vsf
             cell->face(face_number)->set_boundary_indicator (2);
           else if (std::fabs(cell->face(face_number)->center()(0) - (this->width)) < 1e-12) // Left
             cell->face(face_number)->set_boundary_indicator (3);
+
+      setup_system ();
+      setup_quadrature_point_history ();
   }
 
 
   /**
-     * The initial mesh will consist of regular rectangular elements. This mesh will be refined
-     * in successive steps using AntiplaneShearProblem::refine_grid. First a mesh is created with
-     * elements of the highest possible quality (as close to square as possible). Then this mesh
-     * is refined globally a given number of times.
-     *
-     * \note If the fault is very small it can be ignored (if it's size is smaller than the
-     * element size). If this happens, include more global refinement steps.
-     */
-    template <int dim>
-    void ApShear<dim>::make_grid_savage ()
-    {
-      /* The domain can be rectangle, but we want the cells go be as square as possible. */
-      Point<dim> corner_low_left(0.0,-this->height);
-      Point<dim> corner_up_right(this->width,0.0);
-
-      std::vector<unsigned int> repetitions(dim,1);
-      repetitions[0] = std::max(1.0,round(this->width/this->height));
-      GridGenerator::subdivided_hyper_rectangle (triangulation,
-                                                 repetitions,
-                                                 corner_low_left,
-                                                 corner_up_right);
-
-      triangulation.refine_global (n_initial_cycles);
-
-      /**
-       * Once the mesh has been created and refined, we assign an indicator to each part of the
-       * boundary, depending on what kind of boundary it is. There are four possible boundary
-       * conditions:
-       *
-       * - 0) The locked part above the fault, with imposed zero displacement (homogeneous
-       * Dirichlet boundary conditions).
-       *
-       * - 1) Regions of imposed displacement (non-homogeneous Dirichlet
-       * boundary conditions).
-       *
-       * - 2) Free boundaries, with zero imposed traction (homogeneous Neumann boundary
-       * conditions).
-       *
-       * - 3) Imposed traction (non-homogeneous boundary conditions.
-       */
-      typename Triangulation<dim>::cell_iterator cell = triangulation.begin (),
-                                   endc = triangulation.end();
-        for (; cell!=endc; ++cell)
-          for (unsigned int face_number=0;
-               face_number<GeometryInfo<dim>::faces_per_cell;
-               ++face_number)
-            /** For Savage and Burford model \cite savage_burford_73, the
-             * locked part (0) will be on the left boundary, from the top to a certain
-             * depth \f$d\f$. From that depth until the bottom of the model we impose
-             * a displacement \f$D\f# (1). The bottom boundary will have the same imposed
-             * displacement (1). Finaly, yhe top and left boundaries will be free (2).
-             */
-            if ((std::fabs(cell->face(face_number)->center()(0) - (0)) < 1e-12) // Locked part
-                &&
-                (cell->face(face_number)->center()(1) > -this->locked_depth))
-              cell->face(face_number)->set_boundary_indicator (0);
-            else if ((std::fabs(cell->face(face_number)->center()(0) - (0)) < 1e-12) // Fault
-                &&
-                (cell->face(face_number)->center()(1) <= -this->locked_depth))
-              cell->face(face_number)->set_boundary_indicator (1);
-            else if (std::fabs(cell->face(face_number)->center()(1) - (0)) < 1e-12) // Top
-              cell->face(face_number)->set_boundary_indicator (2);
-            else if  (std::fabs(cell->face(face_number)->center()(1) - (-this->height)) < 1e-12) // Bottom
-              cell->face(face_number)->set_boundary_indicator (1);
-            else if (std::fabs(cell->face(face_number)->center()(0) - (this->width)) < 1e-12) // Left
-              cell->face(face_number)->set_boundary_indicator (2);
-    }
-
-
-  /**
-   * We want to compare the results using two different refinement strategies: global and adaptive
-   * refinement. In  the case of the adaptive refinement we use a Kelly Error Estimator to
-   * identify which regions need to be refined and which coarsened.
+   * The initial mesh will consist of regular rectangular elements. This mesh will be refined
+   * in successive steps using refine_grid(). First a mesh is created with
+   * elements of the highest possible quality (as close to square as possible). Then this mesh
+   * is refined globally a given number of times.
+   *
+   * \note If the fault is very small it can be ignored (if it's size is smaller than the
+   * element size). If this happens, include more global refinement steps.
    */
   template <int dim>
-  void ApShear<dim>::refine_grid ()
+  void ApShear<dim>::make_grid_savage ()
+  {
+    /* The domain can be rectangle, but we want the cells go be as square as possible. */
+    Point<dim> corner_low_left(0.0,-this->height);
+    Point<dim> corner_up_right(this->width,0.0);
+
+    std::vector<unsigned int> repetitions(dim,1);
+    repetitions[0] = std::max(1.0,round(this->width/this->height));
+    GridGenerator::subdivided_hyper_rectangle (triangulation,
+                                               repetitions,
+                                               corner_low_left,
+                                               corner_up_right);
+
+    triangulation.refine_global (n_initial_global_refinement);
+
+    /**
+     * Once the mesh has been created and refined, we assign an indicator to each part of the
+     * boundary, depending on what kind of boundary it is. There are four possible boundary
+     * conditions:
+     *
+     * - 0) The locked part above the fault, with imposed zero displacement (homogeneous
+     * Dirichlet boundary conditions).
+     *
+     * - 1) Regions of imposed displacement (non-homogeneous Dirichlet
+     * boundary conditions).
+     *
+     * - 2) Free boundaries, with zero imposed stress (homogeneous Neumann boundary
+     * conditions).
+     *
+     * - 3) Imposed stress (non-homogeneous boundary conditions.
+     */
+    typename Triangulation<dim>::cell_iterator cell = triangulation.begin (),
+                                 endc = triangulation.end();
+      for (; cell!=endc; ++cell)
+        for (unsigned int face_number=0;
+             face_number<GeometryInfo<dim>::faces_per_cell;
+             ++face_number)
+
+          /** For Savage and Burford model \cite savage_burford_73, the
+           * locked part (0) will be on the left boundary, from the top to a certain
+           * depth \f$d\f$. From that depth until the bottom of the model we impose
+           * a displacement \f$D\f$ (1). The bottom boundary will have the same imposed
+           * displacement (1). Finally, the top and left boundaries will be free (2).
+           */
+          if ((std::fabs(cell->face(face_number)->center()(0) - (0)) < 1e-12) // Locked part
+              &&
+              (cell->face(face_number)->center()(1) > -this->locked_depth))
+            cell->face(face_number)->set_boundary_indicator (0);
+          else if ((std::fabs(cell->face(face_number)->center()(0) - (0)) < 1e-12) // Fault
+              &&
+              (cell->face(face_number)->center()(1) <= -this->locked_depth))
+            cell->face(face_number)->set_boundary_indicator (1);
+          else if (std::fabs(cell->face(face_number)->center()(1) - (0)) < 1e-12) // Top
+            cell->face(face_number)->set_boundary_indicator (2);
+          else if  (std::fabs(cell->face(face_number)->center()(1) - (-this->height)) < 1e-12) // Bottom
+            cell->face(face_number)->set_boundary_indicator (1);
+          else if (std::fabs(cell->face(face_number)->center()(0) - (this->width)) < 1e-12) // Left
+            cell->face(face_number)->set_boundary_indicator (2);
+
+      setup_system ();
+      setup_quadrature_point_history ();
+  }
+
+
+  template <int dim>
+  void ApShear<dim>::refine_grid (const unsigned int min_grid_level,
+                                  const unsigned int max_grid_level)
   {
     switch (refinement_mode)
       {
@@ -1104,6 +1186,11 @@ namespace vsf
         break;
       }
 
+      /**
+       * The first step is to identify which cells need to be refined, for which we use we use a
+       * Kelly Error Estimator. We will refine 60% of the cells that have the highest error and coarsen
+       * the rest).
+       */
       case adaptive_refinement:
       {
         Vector<float> estimated_error_per_cell (triangulation.n_active_cells());
@@ -1116,9 +1203,77 @@ namespace vsf
 
         GridRefinement::refine_and_coarsen_fixed_number (triangulation,
                                                          estimated_error_per_cell,
-                                                         0.3, 0.03);
+                                                         0.6, 0.4);
+        /**
+         * We do not want to make any cell too small, because that would mean (according to
+         * the Courant–Friedrichs–Lewy condition) that we have to make the time steps very small.
+         * Therefore, we will mark those cell that have already been refined a certain number of
+         * times so they are not refined any further. a similar thing happens with cells that
+         * are too big, therefore, we will also mark the cells that have reached a certain maximum
+         * size so they are not coarsened any more.
+         */
 
+        if (triangulation.n_levels() > max_grid_level)
+          for (typename Triangulation<dim>::active_cell_iterator
+               cell = triangulation.begin_active(max_grid_level);
+               cell != triangulation.end(); ++cell)
+            cell->clear_refine_flag ();
+        for (typename Triangulation<dim>::active_cell_iterator
+             cell = triangulation.begin_active(min_grid_level);
+             cell != triangulation.end_active(min_grid_level); ++cell)
+          cell->clear_coarsen_flag ();
+
+        /**
+         * Here we also need to transfer the #old_solution, the #solution and the #history_field
+         * (where the old stress is stored) to the new mesh. First we have to prepare the
+         * vectors that will be transferred to the new grid (the old grid will disappear
+         * once we have done the refinement so we have to transfer the data at the same
+         * time as the refinement).
+         */
+
+        SolutionTransfer<dim> solution_trans(dof_handler);
+        std::vector<Vector<double> > unrefined_solution (3, Vector<double>(dof_handler.n_dofs()));
+        unrefined_solution[0] = solution;
+        unrefined_solution[1] = old_solution;
+        unrefined_solution[2] = displacement;
+
+        SolutionTransfer<dim> history_trans(history_dof_handler);
+        std::vector<Vector<double> > unrefined_history_field (9, Vector<double>(history_dof_handler.n_dofs()));
+        for (unsigned int i=0; i<3; ++i)
+          for (unsigned int j=0; j<3; ++j)
+            unrefined_history_field [3 * i + j] = history_field[i][j];
+
+        triangulation.prepare_coarsening_and_refinement();
+        solution_trans.prepare_for_coarsening_and_refinement(unrefined_solution);
+        history_trans.prepare_for_coarsening_and_refinement(unrefined_history_field);
+
+        /**
+         * Once everything is ready we can actually refine and coarsen the mesh.
+         */
         triangulation.execute_coarsening_and_refinement ();
+
+        /**
+         * Once the new mesh is ready, we need to resent the system and the data at the quadrature
+         * points.
+         */
+        setup_system ();
+        setup_quadrature_point_history ();
+
+        /**
+         * Finally, we can interpolate the #old_solution, the #solution and the
+         * #history_field in the new mesh.
+         */
+        std::vector<Vector<double> > refined_solution (3, Vector<double>(dof_handler.n_dofs()));
+        solution_trans.interpolate(unrefined_solution, refined_solution);
+        solution = refined_solution[0];
+        old_solution = refined_solution[1];
+        displacement = refined_solution[2];
+
+        std::vector<Vector<double> > refined_history_field (9, Vector<double>(history_dof_handler.n_dofs()));
+        history_trans.interpolate(unrefined_history_field, refined_history_field);
+        for (unsigned int i=0; i<3; ++i)
+          for (unsigned int j=0; j<3; ++j)
+            history_field[i][j] = refined_history_field[3 * i + j];
 
         break;
       }
@@ -1132,12 +1287,120 @@ namespace vsf
 
 
   /**
+   * As part of the refinement process, we need to store the old stress in a FE field defined
+   * everywhere. Once that has been done, we will be able to transfer the old stress (or any
+   * data stored in the quadrature point using PointHistory) from the old mesh to the refined
+   * mesh. For more details see
+   * <a href="https://www.dealii.org/8.2.0/doxygen/deal.II/step_18.html#Refinementduringtimesteps">Step-18</a>
+   */
+  template <int dim>
+  void ApShear<dim>::qpoints_to_DG ()
+  {
+    std::vector< std::vector< Vector<double> > >
+                 local_history_values_at_qpoints (3, std::vector< Vector<double> >(3)),
+                 local_history_fe_values (3, std::vector< Vector<double> >(3));
+    for (unsigned int i=0; i<3; i++)
+      for (unsigned int j=0; j<3; j++)
+      {
+        local_history_values_at_qpoints[i][j].reinit(quadrature_formula.size());
+        local_history_fe_values[i][j].reinit(history_fe->dofs_per_cell);
+      }
+    FullMatrix<double> qpoint_to_dof_matrix (history_fe->dofs_per_cell,
+                                             quadrature_formula.size());
+    FETools::compute_projection_from_quadrature_points_matrix
+              (*history_fe,
+               quadrature_formula, quadrature_formula,
+               qpoint_to_dof_matrix);
+    typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active(),
+                                                   endc = dof_handler.end(),
+                                                   dg_cell = history_dof_handler.begin_active();
+    for (; cell!=endc; ++cell, ++dg_cell)
+      {
+        PointHistory<dim> *local_quadrature_points_history
+               = reinterpret_cast<PointHistory<dim> *>(cell->user_pointer());
+        Assert (local_quadrature_points_history >=
+                    &quadrature_point_history.front(),
+                    ExcInternalError());
+        Assert (local_quadrature_points_history <
+                    &quadrature_point_history.back(),
+                    ExcInternalError());
+        for (unsigned int i=0; i<3; i++)
+          for (unsigned int j=0; j<3; j++)
+          {
+            for (unsigned int q=0; q<quadrature_formula.size(); ++q)
+              local_history_values_at_qpoints[i][j](q)
+                       = local_quadrature_points_history[q].old_stress[i][j];
+            qpoint_to_dof_matrix.vmult (local_history_fe_values[i][j],
+                                        local_history_values_at_qpoints[i][j]);
+            dg_cell->set_dof_values (local_history_fe_values[i][j],
+                                     history_field[i][j]);
+          }
+      }
+  }
+
+
+  /**
+   * After the mesh has been refined, we need to transfer the old stress back to the
+   * quadrature points. For more details see
+   * <a href="https://www.dealii.org/8.2.0/doxygen/deal.II/step_18.html#Refinementduringtimesteps">Step-18</a>
+   */
+  template <int dim>
+  void ApShear<dim>::DG_to_qpoints ()
+  {
+    std::vector< std::vector< Vector<double> > >
+                   local_history_values_at_qpoints (3, std::vector< Vector<double> >(3)),
+                   local_history_fe_values (3, std::vector< Vector<double> >(3));
+      for (unsigned int i=0; i<3; i++)
+        for (unsigned int j=0; j<3; j++)
+        {
+          local_history_values_at_qpoints[i][j].reinit(quadrature_formula.size());
+          local_history_fe_values[i][j].reinit(history_fe->dofs_per_cell);
+        }
+
+    FullMatrix<double> dof_to_qpoint_matrix (quadrature_formula.size(),
+                                             history_fe->dofs_per_cell);
+    FETools::compute_interpolation_to_quadrature_points_matrix
+              (*history_fe,
+               quadrature_formula,
+               dof_to_qpoint_matrix);
+
+    typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active(),
+                                                   endc = dof_handler.end(),
+                                                   dg_cell = history_dof_handler.begin_active();
+    for (; cell != endc; ++cell, ++dg_cell)
+    {
+     PointHistory<dim> *local_quadrature_points_history
+             = reinterpret_cast<PointHistory<dim> *>(cell->user_pointer());
+      Assert (local_quadrature_points_history >=
+                  &quadrature_point_history.front(),
+                  ExcInternalError());
+      Assert (local_quadrature_points_history <
+                  &quadrature_point_history.back(),
+                  ExcInternalError());
+      for (unsigned int i=0; i<dim; i++)
+        for (unsigned int j=0; j<dim; j++)
+        {
+          dg_cell->get_dof_values (history_field[i][j],
+                                   local_history_fe_values[i][j]);
+          dof_to_qpoint_matrix.vmult (local_history_values_at_qpoints[i][j],
+                                      local_history_fe_values[i][j]);
+          for (unsigned int q=0; q<quadrature_formula.size(); ++q)
+            local_quadrature_points_history[q].old_stress[i][j]
+                       = local_history_values_at_qpoints[i][j](q);
+        }
+    }
+  }
+
+
+  /**
    * Here we set up DoFs, renumber them for efficiency and set required constraints.
    */
   template <int dim>
   void ApShear<dim>::setup_system ()
   {
     dof_handler.distribute_dofs (*fe);
+    history_dof_handler.distribute_dofs (*history_fe);
+
     /**
      * Renumber DoFs to increase efficiency of the solver. In this case, it is not really necessary
      * for the solver and preconditioners that are being used
@@ -1173,10 +1436,118 @@ namespace vsf
     system_matrix.reinit (sparsity_pattern);
 
     solution.reinit (dof_handler.n_dofs());
-    old_solution = solution; // TO DO: Once time steping is implemented, I need to move this up.
+    old_solution.reinit (dof_handler.n_dofs());
+    displacement.reinit (dof_handler.n_dofs());
+    for (unsigned int i=0; i<3; i++)
+          for (unsigned int j=0; j<3; j++)
+            history_field[i][j].reinit(history_dof_handler.n_dofs());
+
     system_rhs.reinit (dof_handler.n_dofs());
   }
 
+
+  template <int dim>
+  void ApShear<dim>::setup_quadrature_point_history ()
+  {
+
+    triangulation.clear_user_data();
+
+    /* Only necesary if implementing parallel code (the number of quadrature points
+     * might change between processors
+    {
+      std::vector<PointHistory<dim> > tmp;
+      tmp.swap (quadrature_point_history);
+    }
+    */
+    quadrature_point_history.resize (triangulation.n_active_cells() *
+                                     quadrature_formula.size());
+    unsigned int history_index = 0;
+    typename DoFHandler<dim>::active_cell_iterator
+    cell = dof_handler.begin_active(),
+    endc = dof_handler.end();
+    for (; cell!=endc; ++cell)
+      {
+        cell->set_user_pointer (&quadrature_point_history[history_index]);
+        history_index += quadrature_formula.size();
+      }
+    Assert (history_index == quadrature_point_history.size(),
+            ExcInternalError());
+  }
+
+  template <int dim>
+  void ApShear<dim>::update_quadrature_point_history ()
+  {
+    FEValues<dim>                 fe_values (*fe, quadrature_formula,
+                                             update_quadrature_points | update_values |
+                                             update_gradients);
+
+    const Elastic_Modulus<dim>    elastic_modulus;
+    std::vector<double>           em_values (quadrature_formula.size());
+    const Viscosity<dim>          viscosity;
+    std::vector<double>           visc_values (quadrature_formula.size());
+
+    std::vector<Tensor<1,dim> >   new_solution_gradients (quadrature_formula.size());
+    std::vector<Tensor<1,dim> >   old_solution_gradients (quadrature_formula.size());
+
+    typename DoFHandler<dim>::active_cell_iterator
+    cell = dof_handler.begin_active(),
+    endc = dof_handler.end();
+    for (; cell!=endc; ++cell)
+    {
+      PointHistory<dim> *local_quadrature_points_history
+        = reinterpret_cast<PointHistory<dim> *>(cell->user_pointer());
+
+      fe_values.reinit (cell);
+
+      elastic_modulus.value_list(fe_values.get_quadrature_points(),em_values);
+      viscosity.value_list(fe_values.get_quadrature_points(),visc_values);
+
+      fe_values.get_function_gradients (solution,
+                                        new_solution_gradients);
+      fe_values.get_function_gradients (old_solution,
+                                        old_solution_gradients);
+
+      for (unsigned int q=0; q<quadrature_formula.size(); ++q)
+        {
+          const double effective_viscosity = visc_values[q] *
+                                             em_values[q] *
+                                             time_step /
+                                             (em_values[q] * time_step + visc_values[q]);
+
+
+          Tensor<2,3> new_stress;
+
+          Tensor<2,3> old_stress = local_quadrature_points_history[q].old_stress;
+
+          //The values of the strain rate and the spin are only valid under the anti-plane shear approximation
+          Tensor<2,3> new_strain_rate;
+          new_strain_rate[0][2] = new_solution_gradients[q][0];
+          new_strain_rate[1][2] = new_solution_gradients[q][1];
+          new_strain_rate[2][0] = new_solution_gradients[q][0];
+          new_strain_rate[2][1] = new_solution_gradients[q][1];
+
+          Tensor<2,3> old_spin;
+          old_spin[0][2] = -old_solution_gradients[q][0];
+          old_spin[1][2] = -old_solution_gradients[q][1];
+          old_spin[2][0] = old_solution_gradients[q][0];
+          old_spin[2][1] = old_solution_gradients[q][1];
+
+          for (unsigned int i=0; i < 3; ++i)
+            for (unsigned int j=0; j < 3; ++j)
+              {
+                new_stress[i][j] = 2 * effective_viscosity * new_strain_rate[i][j] +
+                                       effective_viscosity * 1/(em_values[q] * time_step) * old_stress[i][j];
+                for (unsigned int k=0; k < 3; ++k)
+                  {
+                    new_stress[i][j] += effective_viscosity * 1/em_values[q] *
+                                        (old_spin[i][k] * old_stress[k][j] -
+                                         old_stress[i][k] * old_spin[k][j]);
+                  }
+              }
+          local_quadrature_points_history[q].old_stress = new_stress;
+        }
+    }
+  }
 
 
   /**
@@ -1185,8 +1556,7 @@ namespace vsf
   template <int dim>
   void ApShear<dim>::assemble_system ()
   {
-    QGauss<dim>   quadrature_formula(3);
-    QGauss<dim-1> face_quadrature_formula(3);
+    QGauss<dim-1> face_quadrature_formula(degree+1);
 
     const unsigned int n_q_points    = quadrature_formula.size();
     const unsigned int n_face_q_points = face_quadrature_formula.size();
@@ -1214,7 +1584,9 @@ namespace vsf
     std::vector<double>          bf_values (n_q_points);
     const Neumann_BC<dim>        neumann_bc;
     std::vector<double>          nbc_values (n_face_q_points);
-    std::vector<Tensor<1,dim> >   old_solution_gradients (n_q_points);
+    std::vector<Tensor<1,dim> >  old_solution_gradients (n_q_points);
+
+    old_solution = solution;
 
     typename DoFHandler<dim>::active_cell_iterator
     cell = dof_handler.begin_active(),
@@ -1283,12 +1655,6 @@ namespace vsf
                                     (old_stress[l][k] *
                                      old_spin[k][2])) /
                                    em_values[q]);
-                    // TO DO: delete this
-//                    if (step == 1)
-//                      {
-//                        std::cout << effective_viscosity <<"\t" << old_stress[l][2] << "\t";
-//                        std::cout << em_values[q] <<"\t" << g_e_z[l] << std::endl;
-//                      }
                   }
                 cell_rhs(i) += -((fe_values.shape_grad(i,q)) *
                                   g_e_z *
@@ -1362,8 +1728,13 @@ namespace vsf
    * The maximal velocity is obtained by looping through every quadrature point.
    */
   template <int dim>
-  void ApShear<dim>::get_time_step ()
+  void ApShear<dim>::get_time_step_and_displacement ()
   {
+    Vector<double> inc_displacement;
+    inc_displacement = solution;
+    inc_displacement *= time_step;
+    displacement += inc_displacement;
+
     const unsigned int   n_q_points
       = quadrature_formula.size();
     FEValues<dim> fe_values (*fe, quadrature_formula,
@@ -1381,15 +1752,12 @@ namespace vsf
         for (unsigned int q=0; q<n_q_points; ++q)
           {
             max_velocity = std::max (max_velocity,
-                                     solution_values[q]);
+                                     std::fabs(solution_values[q]));
           }
       }
     time_step = GridTools::minimal_cell_diameter(triangulation) /
                 max_velocity /
                 std::sqrt(dim + 1.0);
-    std::cout << max_velocity << std::endl;
-    std::cout << time_step << std::endl;
-
   }
 
 
@@ -1407,7 +1775,7 @@ namespace vsf
   void ApShear<dim>::compare_solutions_turcotte ()
   {
 
-    QGauss<dim-1>   face_quadrature_formula(3);
+    QGauss<dim-1>   face_quadrature_formula(degree+1);
     const unsigned int n_faces = GeometryInfo<dim>::faces_per_cell;
     const unsigned int n_face_q_points    = face_quadrature_formula.size();
 
@@ -1433,11 +1801,11 @@ namespace vsf
             fe_face_values.reinit (cell, face_number);
             for (unsigned int q=0; q<n_face_q_points; ++q)
               {
-                surface_q_points[cycle].push_back(fe_face_values.quadrature_point(q)[0]);
-                surface_analytical_solution[cycle].push_back(exact_solution.value(fe_face_values.quadrature_point(q)));
-                surface_numerical_solution[cycle].push_back(VectorTools::point_value (dof_handler, solution,
+                surface_q_points.push_back(fe_face_values.quadrature_point(q)[0]);
+                surface_analytical_solution.push_back(exact_solution.value(fe_face_values.quadrature_point(q)));
+                surface_numerical_solution.push_back(VectorTools::point_value (dof_handler, solution,
                                                                     fe_face_values.quadrature_point(q)));
-                error[cycle] += (std::fabs(surface_analytical_solution[cycle].back()-numerical_solution[cycle].back())*
+                error += (std::fabs(surface_analytical_solution.back()-surface_numerical_solution.back())*
                                                     fe_face_values.JxW(q));
 
               }
@@ -1459,7 +1827,7 @@ namespace vsf
   void ApShear<dim>::compare_solutions_savage ()
   {
 
-    QGauss<dim-1>   face_quadrature_formula(3);
+    QGauss<dim-1>   face_quadrature_formula(degree+1);
     const unsigned int n_faces = GeometryInfo<dim>::faces_per_cell;
     const unsigned int n_face_q_points    = face_quadrature_formula.size();
 
@@ -1485,52 +1853,16 @@ namespace vsf
             fe_face_values.reinit (cell, face_number);
             for (unsigned int q=0; q<n_face_q_points; ++q)
               {
-                surface_q_points[cycle].push_back(fe_face_values.quadrature_point(q)[0]);
-                surface_analytical_solution[cycle].push_back(exact_solution.value(fe_face_values.quadrature_point(q)));
-                surface_numerical_solution[cycle].push_back(VectorTools::point_value (dof_handler, solution,
+                surface_q_points.push_back(fe_face_values.quadrature_point(q)[0]);
+                surface_analytical_solution.push_back(exact_solution.value(fe_face_values.quadrature_point(q)));
+                surface_numerical_solution.push_back(VectorTools::point_value (dof_handler, solution,
                                                                     fe_face_values.quadrature_point(q)));
-                error[cycle] += (std::fabs(surface_analytical_solution[cycle].back()-numerical_solution[cycle].back())*
+                error += (std::fabs(surface_analytical_solution.back()-surface_numerical_solution.back())*
                                                     fe_face_values.JxW(q));
 
               }
           }
   }
-
-
-  template <int dim>
-  void ApShear<dim>::extract_quadrature_point_history ()
-  {
-
-    const unsigned int n_q_points    = quadrature_formula.size();
-
-    FEValues<dim> fe_values (*fe, quadrature_formula,
-                                         update_values         | update_quadrature_points);
-    /**
-     * First we need to run a loop over every cell and every quadrature point to determine if
-     * they are located at the surface, if so, we will compute the analytical solution and extract
-     * the numerical solution to store them in analytical_solution and numerical_solution.
-     * Once we have both solutions at the surface, we will compute the integrated
-     * difference between them and we will store it in integrated_diff.
-     */
-    typename DoFHandler<dim>::active_cell_iterator
-    cell = dof_handler.begin_active(),
-    endc = dof_handler.end();
-    for (; cell!=endc; ++cell)
-      {
-        const PointHistory<dim> *local_old_stress
-                    = reinterpret_cast<PointHistory<dim>*>(cell->user_pointer());
-        fe_values.reinit (cell);
-        for (unsigned int q=0; q<n_q_points; ++q)
-          {
-            q_points_x[cycle].push_back(fe_values.quadrature_point(q)[0]);
-            q_points_y[cycle].push_back(fe_values.quadrature_point(q)[1]);
-            numerical_solution[cycle].push_back(VectorTools::point_value (dof_handler, solution,
-                                                                          fe_values.quadrature_point(q)));
-            old_stress_solution[cycle].push_back(local_old_stress[q].old_stress);
-          }
-      }
- }
-
 
 
   /**
@@ -1591,178 +1923,69 @@ namespace vsf
     GridOut grid_out;
     grid_out.write_eps (triangulation, output_mesh);
 
-    // Output numercial solution
+    // Output numerical solution
     std::ostringstream vtk_filename;
     vtk_filename << filename.str() << ".vtk";
     std::ofstream output_num_sol (vtk_filename.str().c_str());
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
-    data_out.add_data_vector (solution, "solution");
+    data_out.add_data_vector (solution, "velocity");
+    data_out.add_data_vector (displacement, "displacement");
 
     data_out.build_patches (fe->degree);
     data_out.write_vtk (output_num_sol);
 
-    // Output comparison
-    std::ostringstream txt_filename_error;
-    txt_filename_error << filename.str() << "-error" << ".txt";
-    std::ofstream out_compare_error(txt_filename_error.str().c_str());
+    // Output point history
+    std::ostringstream vtk_filename_history;
+    vtk_filename_history << filename.str() << "_history.vtk";
+    std::ofstream output_history (vtk_filename_history.str().c_str());
 
-    for (cycle = 0; cycle<n_cycles; ++cycle)
-      {
-        std::ostringstream txt_filename_analytical;
-        txt_filename_analytical << filename.str() << "-analytical-" << cycle << ".txt";
-        std::ofstream out_compare_analytical (txt_filename_analytical.str().c_str());
+    DataOut<dim> data_out_history;
+    data_out_history.attach_dof_handler (history_dof_handler);
+    data_out_history.add_data_vector (history_field[0][2], "history_field_xz");
+    data_out_history.add_data_vector (history_field[1][2], "history_field_yz");
+    data_out_history.add_data_vector (history_field[2][2], "history_field_zz");
 
-        std::ostringstream txt_filename_numerical;
-        txt_filename_numerical << filename.str() << "-numerical-" << cycle << ".txt";
-        std::ofstream out_compare_numerical(txt_filename_numerical.str().c_str());
-
-        const int n_q_points = surface_q_points[cycle].size ();
-        for (unsigned int q = 0; q<n_q_points; ++q)
-          {
-            out_compare_analytical << surface_q_points [cycle] [q] << "\t";
-            out_compare_analytical << surface_analytical_solution [cycle][q] << std::endl;
-
-            out_compare_numerical << surface_q_points [cycle] [q] << "\t";
-            out_compare_numerical << surface_numerical_solution [cycle][q] << std::endl;
-          }
-
-        out_compare_error << cycle << "\t";
-        out_compare_error << error [cycle] << std::endl;
-      }
-    // Output stored data
-    for (cycle = 0; cycle<n_cycles; ++cycle)
-      {
-        std::ostringstream txt_filename_numerical2;
-        txt_filename_numerical2 << filename.str() << "-numerical2-" << cycle << ".txt";
-        std::ofstream out_compare_numerical2(txt_filename_numerical2.str().c_str());
-
-        const int n_q_points2 = q_points_x[cycle].size ();
-        for (unsigned int q = 0; q<n_q_points2; ++q)
-          {
-            out_compare_numerical2 << q_points_x [cycle] [q] << "\t";
-            out_compare_numerical2 << q_points_y [cycle] [q] << "\t";
-            out_compare_numerical2 << numerical_solution [cycle] [q] << "\t";
-            out_compare_numerical2 << old_stress_solution [cycle][q][0][2] << "\t";
-            out_compare_numerical2 << old_stress_solution [cycle][q][1][2] << "\t";
-            out_compare_numerical2 << old_stress_solution [cycle][q][2][0] << "\t";
-            out_compare_numerical2 << old_stress_solution [cycle][q][2][1] << "\t";
-            out_compare_numerical2 << old_stress_solution [cycle][q][2][2] << std::endl;
-          }
-      }
-  }
+    data_out_history.build_patches (history_fe->degree);
+    data_out_history.write_vtk (output_history);
 
 
-  template <int dim>
-  void ApShear<dim>::setup_quadrature_point_history ()
-  {
-
-    triangulation.clear_user_data();
-
-    /* Only necesary if implementing parallel code (the number of quadrature points
-     * might change between processors
-    {
-      std::vector<PointHistory<dim> > tmp;
-      tmp.swap (quadrature_point_history);
-    }
-    */
-    quadrature_point_history.resize (triangulation.n_active_cells() *
-                                     quadrature_formula.size());
-    unsigned int history_index = 0;
-    typename DoFHandler<dim>::active_cell_iterator
-    cell = dof_handler.begin_active(),
-    endc = dof_handler.end();
-    for (; cell!=endc; ++cell)
-      {
-        cell->set_user_pointer (&quadrature_point_history[history_index]);
-        history_index += quadrature_formula.size();
-      }
-    Assert (history_index == quadrature_point_history.size(),
-            ExcInternalError());
-  }
-
-  template <int dim>
-  void ApShear<dim>::update_quadrature_point_history ()
-  {
-    FEValues<dim>                 fe_values (*fe, quadrature_formula,
-                                             update_quadrature_points | update_values |
-                                             update_gradients);
-
-    const Elastic_Modulus<dim>    elastic_modulus;
-    std::vector<double>           em_values (quadrature_formula.size());
-    const Viscosity<dim>          viscosity;
-    std::vector<double>           visc_values (quadrature_formula.size());
-
-    std::vector<Tensor<1,dim> >   new_solution_gradients (quadrature_formula.size());
-    std::vector<Tensor<1,dim> >   old_solution_gradients (quadrature_formula.size());
-
-    typename DoFHandler<dim>::active_cell_iterator
-    cell = dof_handler.begin_active(),
-    endc = dof_handler.end();
-    for (; cell!=endc; ++cell)
-    {
-      PointHistory<dim> *local_quadrature_points_history
-        = reinterpret_cast<PointHistory<dim> *>(cell->user_pointer());
-
-      fe_values.reinit (cell);
-
-      elastic_modulus.value_list(fe_values.get_quadrature_points(),em_values);
-      viscosity.value_list(fe_values.get_quadrature_points(),visc_values);
-
-      fe_values.get_function_gradients (solution,
-                                        new_solution_gradients);
-      fe_values.get_function_gradients (old_solution,
-                                        old_solution_gradients);
-
-      for (unsigned int q=0; q<quadrature_formula.size(); ++q)
-        {
-          const double effective_viscosity = visc_values[q] *
-                                             em_values[q] *
-                                             time_step *
-                                             (em_values[q] * time_step + visc_values[q]);
-
-
-          Tensor<2,3> new_stress;
-
-          Tensor<2,3> old_stress = local_quadrature_points_history[q].old_stress;
-
-          //The values of the strain rate and the spin are only valid under the anti-plane shear approximation
-          Tensor<2,3> new_strain_rate;
-          new_strain_rate[0][2] = new_solution_gradients[q][0];
-          new_strain_rate[1][2] = new_solution_gradients[q][1];
-          new_strain_rate[2][0] = new_solution_gradients[q][0];
-          new_strain_rate[2][1] = new_solution_gradients[q][1];
-
-          Tensor<2,3> old_spin;
-          old_spin[0][2] = -old_solution_gradients[q][0];
-          old_spin[1][2] = -old_solution_gradients[q][1];
-          old_spin[2][0] = old_solution_gradients[q][0];
-          old_spin[2][1] = old_solution_gradients[q][1];
-
-          for (unsigned int i=0; i < 3; ++i)
-            for (unsigned int j=0; j < 3; ++j)
-              {
-                new_stress[i][j] = 2 * effective_viscosity * new_strain_rate[i][j] +
-                                       effective_viscosity * 1/(em_values[q] * time_step) * old_stress[i][j];
-                for (unsigned int k=0; k < 3; ++k)
-                  {
-                    new_stress[i][j] += effective_viscosity * 1/em_values[q] *
-                                        (old_spin[i][k] * old_stress[k][j] -
-                                         old_stress[i][k] * old_spin[k][j]);
-                  }
-              }
-          local_quadrature_points_history[q].old_stress = new_stress;
-        }
-    }
+//    // Output comparison
+//    std::ostringstream txt_filename_error;
+//    txt_filename_error << filename.str() << "-error" << ".txt";
+//    std::ofstream out_compare_error(txt_filename_error.str().c_str());
+//
+//    std::ostringstream txt_filename_analytical;
+//    txt_filename_analytical << filename.str() << "-analytical" << ".txt";
+//    std::ofstream out_compare_analytical (txt_filename_analytical.str().c_str());
+//
+//    std::ostringstream txt_filename_numerical;
+//    txt_filename_numerical << filename.str() << "-numerical" << ".txt";
+//    std::ofstream out_compare_numerical(txt_filename_numerical.str().c_str());
+//
+//    const int n_q_points = surface_q_points.size ();
+//    for (unsigned int q = 0; q<n_q_points; ++q)
+//      {
+//        out_compare_analytical << surface_q_points [q] << "\t";
+//        out_compare_analytical << surface_analytical_solution[q] << std::endl;
+//
+//        out_compare_numerical << surface_q_points [q] << "\t";
+//        out_compare_numerical << surface_numerical_solution [q] << std::endl;
+//      }
+//
+//    out_compare_error << error << std::endl;
   }
 }
+
+
 
 
 
 int main ()
 {
   const unsigned int dim = 2;
+  const unsigned int degree = 1;
 
   try
     {
@@ -1777,20 +2000,23 @@ int main ()
       Assert (dim == 2, ExcNotImplemented ());
 
       /**
-       * When an AntiplaneShearProblem is created the user must specify the kind of elements and
+       * When an ApShear is created the user must specify the kind of elements and
        * refinement (adaptive_refinement or global_refinement) and Model (turcotte or savage)
        * are going oto be used.
        */
       {
-        std::cout << "Solving with Q1 elements, adaptive refinement for Savage and Burford Model" << std::endl
+        std::cout << "Solving with Q1 elements, adaptive refinement for Turcotte and Spence Model" << std::endl
                   << "==========================================================================" << std::endl
                   << std::endl;
 
-        FE_Q<dim> fe(1);
+        FE_Q<dim> fe(degree);
+        FE_DGQ<dim> history_fe(degree);
         ApShear<dim>
         antiplane_shear_problem_2d (fe,
+                                    history_fe,
+                                    degree,
                                     ApShear<dim>::adaptive_refinement,
-                                    ApShear<dim>::savage);
+                                    ApShear<dim>::turcotte);
 
         antiplane_shear_problem_2d.run ();
 
