@@ -1,3 +1,39 @@
+/* VE_fault_viscous
+ * Copyright 2016, Juan Rodriguez-Gonzalez, University of Maryland
+ * https://github.com/jrglez/VE_fault_viscous
+ * jrglez@umd.edu
+
+ * VE_fault_viscous was developed by 
+ * Juan Rodríguez-González and Laurent G. J. Montesi.
+ * All work was funded by the National Science Foundation (#1419826).
+
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ * ---------------------------------------------------------------------
+ *
+ * This file has been created using the deal.II library.
+ *
+ * The deal.II library is free software; you can use it, redistribute
+ * it, and/or modify it under the terms of the GNU Lesser General
+ * Public License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * The full text of the license can be found in the file LICENSE at
+ * the top level of the deal.II distribution.
+ *
+ * ---------------------------------------------------------------------
+ */
+
 /* TO DO:
  * - AQUI: time stepping works, do results make sense?
  *   + De momento no cambia mucho y de repente se des estabiliza. Por que?
@@ -9,26 +45,14 @@
  *    + The functions ElasticModulus and Viscosity will be useless after the first time step
  */
 
-/* ---------------------------------------------------------------------
- *
- * Copyright (C) 2007 - 2013 by the deal.II authors
- *
- * This file is part of the deal.II library.
- *
- * The deal.II library is free software; you can use it, redistribute
- * it, and/or modify it under the terms of the GNU Lesser General
- * Public License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * The full text of the license can be found in the file LICENSE at
- * the top level of the deal.II distribution.
- *
- * ---------------------------------------------------------------------
-
- *
- * Authors: Martin Kronbichler, Uppsala University,
- *          Wolfgang Bangerth, Texas A&M University 2007, 2008
- */
 /*! \mainpage
+ *
+ * \warning
+ * This code is under development and has not been properly benchmarked.
+ * Feel free to use it, but be warned that it is distributed WITHOUT ANY WARRANTY.
+ * Please, contact Juan Rodriguez-Gonzalez (jrglez@umd.edu) if you make any 
+ * significant modifications to this code.
+ *
  * \section intro Introduction
  * This code simulates the deformation of a viscoelastic medium in presence
  * of a discrete fault under the anti-plane shear approximation.
@@ -137,7 +161,7 @@
  * Therefore, we will follow the next scheme to solve the problem:
  *   -# Input initial conditions for the stress \f$\tau^0\f$ and velocity \f$u^0\f$.
  *   -# Compute the initial material spin \f$\omega^0(u^0)\f$.
- *   -# Compute the internal elastic force that will be used in the firts time step
+ *   -# Compute the internal elastic stress that will be used in the firts time step
  *   \f$f^{e^1}_j = \partial_i g^{e^1}_{ij}(\tau^0,\omega^0)\f$.
  *   -# Solve the momentum equation to obtain the velocity of the first time step
  *   \f$u^1\f$.
@@ -161,12 +185,12 @@
  * direction \f$(u_{x}=u_{y}=0)\f$. Moreover, under this approximation no
  * magnitude can vary along the \f$z\f$ direction \f$(\frac{\partial}{\partial z}=0)\f$.
  * Therefore, under this approximation
- * \f$\varepsilon_{xx}=\varepsilon_{yy}=\varepsilon_{zz}=\varepsilon_{xy}=\varepsilon_{yx}=0\f$
- * and \f$\omega_{xx}=\omega_{yy}=\omega_{zz}=\omega_{xy}=\omega_{yx}=0\f$
- * and the governing equations are reduced to:
+ * \f$\varepsilon_{xx}=\dot\varepsilon_{yy}=\dot\varepsilon_{zz}=\dot\varepsilon_{xy}=
+ * \dot\varepsilon_{yx}=0\f$ and \f$\omega_{xx}=\omega_{yy}=\omega_{zz}=\omega_{xy}=
+ * \omega_{yx}=0\f$ and the governing equations are reduced to:
  * \f[-\partial_x P = f^e_x \f]
  * \f[-\partial_y P = f^g_y + f^e_y \f]
- * \f[\partial_x(2\eta_{ef}\varepsilon_{xz})+\partial_y(2\eta_{ef}\varepsilon_{yz})=f^e_z\f]
+ * \f[\partial_x(2\eta_{ef}\dot\varepsilon_{xz})+\partial_y(2\eta_{ef}\dot\varepsilon_{yz})=f^e_z\f]
  *
  * where
  * \f[f^e_x = -\partial_x \left\{\eta_{ef}\left[ \frac{1}{\mu\Delta t} \tau^{t-1}_{xx} +
